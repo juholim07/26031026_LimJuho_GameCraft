@@ -23,7 +23,9 @@ class G2D2DContext : IDisposable
 		Factory = D2D1.D2D1CreateFactory<ID2D1Factory1>();
 		DWriteFactory = DWrite.DWriteCreateFactory<IDWriteFactory>();
 		RenderTarget = Factory.CreateHwndRenderTarget(
-			  new RenderTargetProperties()
+			  // Keep rendering units equal to client pixels. The default desktop DPI
+			  // otherwise magnifies the scene again on 125%/150% displays and crops it.
+			  new RenderTargetProperties { DpiX = 96, DpiY = 96 }
 			, new HwndRenderTargetProperties
 			{
 				Hwnd = hwnd,

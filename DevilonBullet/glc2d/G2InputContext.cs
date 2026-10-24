@@ -19,6 +19,7 @@ class G2InputContext : IDisposable
 	}
 	public PointF MousePosition => _mousePosition;
 	public PointF MouseDelta => _mouseDelta;
+	public bool MouseInViewport { get; private set; }
 	public int MouseWheelDelta { get; private set; }
 
 	private const int MaxInputKey = 256;
@@ -111,6 +112,7 @@ class G2InputContext : IDisposable
 	private void UpdateMousePosition()
 	{
 		_mouseDelta = PointF.Empty;
+		MouseInViewport = false;
 		if (!GetCursorPos(out NativePoint point))
 		{
 			return;
@@ -119,10 +121,12 @@ class G2InputContext : IDisposable
 		{
 			return;
 		}
-		var scaleX = G2AppBase.ScreenScaleX;
-		var scaleY = G2AppBase.ScreenScaleY;
-
-		_mousePosition = new PointF(point.X / scaleX, point.Y / scaleY);
+		var app = G2AppBase.Instance!;
+		_mousePosition = new PointF(
+			(point.X - app.ViewportOffsetX) / app.ScaleX,
+			(point.Y - app.ViewportOffsetY) / app.ScaleY);
+		MouseInViewport = _mousePosition.X >= 0 && _mousePosition.X < app.ScreenSize.Width &&
+			_mousePosition.Y >= 0 && _mousePosition.Y < app.ScreenSize.Height;
 		_mouseDelta = new PointF(_mousePosition.X - _mouseOldPosition.X, _mousePosition.Y - _mouseOldPosition.Y);
 		_mouseOldPosition = _mousePosition;
 	}

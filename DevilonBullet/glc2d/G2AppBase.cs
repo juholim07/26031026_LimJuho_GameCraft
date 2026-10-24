@@ -25,8 +25,12 @@ abstract class G2AppBase : IDisposable
 	public double DeltaTime { get; private set; }
 	public double TotalTime { get; private set; }
 
-	public float ScaleX => (float)_mainForm.ClientSize.Width / ScreenSize.Width;
-	public float ScaleY => (float)_mainForm.ClientSize.Height / ScreenSize.Height;
+	public float ScaleX => Math.Min(
+		(float)Math.Max(1, _mainForm.ClientSize.Width) / ScreenSize.Width,
+		(float)Math.Max(1, _mainForm.ClientSize.Height) / ScreenSize.Height);
+	public float ScaleY => ScaleX;
+	public float ViewportOffsetX => (_mainForm.ClientSize.Width - ScreenSize.Width * ScaleX) / 2;
+	public float ViewportOffsetY => (_mainForm.ClientSize.Height - ScreenSize.Height * ScaleY) / 2;
 
 	public static float ScreenScaleX => Instance?.ScaleX ?? throw new InvalidOperationException("ScreenScaleX::G2AppBase instance is not initialized.");
 	public static float ScreenScaleY => Instance?.ScaleY ?? throw new InvalidOperationException("ScreenScaleY::G2AppBase instance is not initialized.");
@@ -59,7 +63,8 @@ abstract class G2AppBase : IDisposable
 		_mainForm = new RenderForm
 		{
 			Text = GameName,
-			StartPosition = FormStartPosition.CenterScreen,
+			AutoScaleMode = AutoScaleMode.None,
+			StartPosition = FormStartPosition.Manual,
 			ClientSize = ScreenSize
 		};
 		G2D2DContext? graphics = null;
@@ -67,6 +72,9 @@ abstract class G2AppBase : IDisposable
 		G2InputContext? inputContext = null;
 		try
 		{
+			// Create the handle before measuring the DPI-dependent title bar/borders.
+			_ = _mainForm.Handle;
+			FitWindowToScreen();
 			graphics = new G2D2DContext(
 				_mainForm.Handle,
 				_mainForm.ClientSize.Width,
@@ -77,6 +85,7 @@ abstract class G2AppBase : IDisposable
 			_graphics = graphics;
 			_inputContext = inputContext;
 			_mainForm.Resize += MainFormResize;
+			_mainForm.Shown += MainFormShown;
 		}
 		catch
 		{
@@ -138,13 +147,36 @@ abstract class G2AppBase : IDisposable
 	private void Render2D()
 	{
 		ID2D1HwndRenderTarget renderTarget = _graphics.RenderTarget;
-		renderTarget.Transform = System.Numerics.Matrix3x2.CreateScale(ScreenScaleX, ScreenScaleY);
 		renderTarget.BeginDraw();
+		renderTarget.Transform = System.Numerics.Matrix3x2.Identity;
+		renderTarget.Clear(new Color4(0, 0, 0, 1));
+		renderTarget.Transform = System.Numerics.Matrix3x2.CreateScale(ScaleX) *
+			System.Numerics.Matrix3x2.CreateTranslation(ViewportOffsetX, ViewportOffsetY);
+		renderTarget.PushAxisAlignedClip(new Rect(0, 0, ScreenSize.Width, ScreenSize.Height), AntialiasMode.PerPrimitive);
 		renderTarget.Clear(ClearColor);
 
 		Render();
 
+		renderTarget.PopAxisAlignedClip();
 		renderTarget.EndDraw();
+	}
+
+	private void MainFormShown(object? sender, EventArgs e) => FitWindowToScreen();
+
+	private void FitWindowToScreen()
+	{
+		Rectangle workArea = Screen.FromPoint(Cursor.Position).WorkingArea;
+		int borderWidth = _mainForm.Width - _mainForm.ClientSize.Width;
+		int borderHeight = _mainForm.Height - _mainForm.ClientSize.Height;
+		float scale = Math.Min(1, Math.Min(
+			(float)Math.Max(1, workArea.Width - borderWidth - 32) / ScreenSize.Width,
+			(float)Math.Max(1, workArea.Height - borderHeight - 32) / ScreenSize.Height));
+		_mainForm.ClientSize = new System.Drawing.Size(
+			Math.Max(1, (int)(ScreenSize.Width * scale)),
+			Math.Max(1, (int)(ScreenSize.Height * scale)));
+		_mainForm.Location = new Point(
+			workArea.Left + (workArea.Width - _mainForm.Width) / 2,
+			workArea.Top + (workArea.Height - _mainForm.Height) / 2);
 	}
 
 	private void MainFormResize(object? sender, EventArgs e)
@@ -160,6 +192,7 @@ abstract class G2AppBase : IDisposable
 	{
 		_stopwatch.Stop();
 		_mainForm.Resize -= MainFormResize;
+		_mainForm.Shown -= MainFormShown;
 		_inputContext.Dispose();
 		_audioContext.Dispose();
 		_graphics.Dispose();

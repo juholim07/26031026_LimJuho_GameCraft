@@ -7,6 +7,7 @@
     <Nullable>enable</Nullable>
     <StartupObject></StartupObject>
     <UseWindowsForms>True</UseWindowsForms>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
   </PropertyGroup>
 
   <ItemGroup>
@@ -16,6 +17,14 @@
     <PackageReference Include="Vortice.WinForms" Version="3.8.3" />
     <PackageReference Include="Vortice.XAudio2" Version="3.8.3" />
     <PackageReference Include="Vortice.XInput" Version="3.8.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\resource\Temporary\*.png">
+      <Link>resource\Temporary\%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
   </ItemGroup>
 
 </Project>

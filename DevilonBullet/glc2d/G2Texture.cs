@@ -69,6 +69,13 @@ class G2Texture : IDisposable
 		renderTarget.DrawBitmap(_textureData!.Bitmap, destination, opacity, interpolationMode, sourceRectangle);
 	}
 
+	// Scale the complete image into the destination rectangle.
+	public void Draw(Rect destination, float opacity = 1.0f, BitmapInterpolationMode interpolationMode = BitmapInterpolationMode.Linear)
+	{
+		var size = _textureData!.Bitmap.Size;
+		Draw(destination, new Rect(0, 0, size.Width, size.Height), opacity, interpolationMode);
+	}
+
 	public void Dispose()
 	{
 		_textureData!.Count--;
